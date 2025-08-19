@@ -67,6 +67,15 @@ export default {
 					ring: 'hsl(var(--sidebar-ring))'
 				}
 			},
+			boxShadow: {
+				'elegant': '0 10px 30px -10px hsl(213 94% 45% / 0.15)',
+				'card': '0 4px 20px -4px hsl(215 25% 15% / 0.08)',
+				'hover': '0 8px 30px -8px hsl(213 94% 45% / 0.25)',
+			},
+			backgroundImage: {
+				'gradient-hero': 'linear-gradient(135deg, hsl(213 94% 45%), hsl(213 94% 55%))',
+				'gradient-card': 'linear-gradient(145deg, hsl(0 0% 100%), hsl(215 15% 98%))',
+			},
 			borderRadius: {
 				lg: 'var(--radius)',
 				md: 'calc(var(--radius) - 2px)',
@@ -88,11 +97,33 @@ export default {
 					to: {
 						height: '0'
 					}
+				},
+				'fade-in': {
+					'0%': {
+						opacity: '0',
+						transform: 'translateY(10px)'
+					},
+					'100%': {
+						opacity: '1',
+						transform: 'translateY(0)'
+					}
+				},
+				'scale-in': {
+					'0%': {
+						transform: 'scale(0.95)',
+						opacity: '0'
+					},
+					'100%': {
+						transform: 'scale(1)',
+						opacity: '1'
+					}
 				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
+				'accordion-up': 'accordion-up 0.2s ease-out',
+				'fade-in': 'fade-in 0.3s ease-out',
+				'scale-in': 'scale-in 0.2s ease-out'
 			}
 		}
 	},
