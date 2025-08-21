@@ -1,6 +1,6 @@
 interface TravelTimeRequest {
   origin: [number, number]; // [longitude, latitude]
-  destination: string; // address or coordinates
+  destination: string | [number, number]; // address or coordinates
   mode: 'driving' | 'walking' | 'cycling';
 }
 
@@ -11,34 +11,33 @@ interface TravelTimeResponse {
 }
 
 export class TravelTimeService {
-  private apiKey: string;
-  private baseUrl = 'https://api.mapbox.com/directions/v5/mapbox';
+  private baseUrl = 'https://router.project-osrm.org';
 
-  constructor(apiKey: string) {
-    this.apiKey = apiKey;
+  constructor() {
+    // No API key needed for OSRM
   }
 
   async calculateTravelTime(request: TravelTimeRequest): Promise<TravelTimeResponse | null> {
     try {
       // Convert address to coordinates if needed
-      let destinationCoords: string;
+      let destinationCoords: [number, number];
       
       if (typeof request.destination === 'string') {
         const geocoded = await this.geocodeAddress(request.destination);
         if (!geocoded) return null;
-        destinationCoords = `${geocoded[0]},${geocoded[1]}`;
+        destinationCoords = geocoded;
       } else {
-        destinationCoords = `${request.destination[0]},${request.destination[1]}`;
+        destinationCoords = request.destination;
       }
 
-      const profile = this.getMapboxProfile(request.mode);
-      const coordinates = `${request.origin[0]},${request.origin[1]};${destinationCoords}`;
+      const profile = this.getOSRMProfile(request.mode);
+      const coordinates = `${request.origin[0]},${request.origin[1]};${destinationCoords[0]},${destinationCoords[1]}`;
       
-      const url = `${this.baseUrl}/${profile}/${coordinates}?access_token=${this.apiKey}&geometries=geojson`;
+      const url = `${this.baseUrl}/route/v1/${profile}/${coordinates}?overview=false&alternatives=false&steps=false`;
 
       const response = await fetch(url);
       if (!response.ok) {
-        throw new Error(`Mapbox API error: ${response.status}`);
+        throw new Error(`OSRM API error: ${response.status}`);
       }
 
       const data = await response.json();
@@ -62,31 +61,37 @@ export class TravelTimeService {
 
   private async geocodeAddress(address: string): Promise<[number, number] | null> {
     try {
-      const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(address)}.json?access_token=${this.apiKey}&country=GB&limit=1`;
+      // Use Nominatim (OpenStreetMap) for free geocoding
+      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&countrycodes=gb&limit=1`;
       
-      const response = await fetch(url);
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': 'RealEstate-App/1.0'
+        }
+      });
       if (!response.ok) return null;
       
       const data = await response.json();
       
-      if (!data.features || data.features.length === 0) {
+      if (!data || data.length === 0) {
         return null;
       }
 
-      const coordinates = data.features[0].geometry.coordinates;
-      return [coordinates[0], coordinates[1]]; // [longitude, latitude]
+      const result = data[0];
+      return [parseFloat(result.lon), parseFloat(result.lat)]; // [longitude, latitude]
     } catch (error) {
       console.error('Geocoding error:', error);
       return null;
     }
   }
 
-  private getMapboxProfile(mode: string): string {
+  private getOSRMProfile(mode: string): string {
     switch (mode) {
       case 'driving': return 'driving';
-      case 'walking': return 'walking';
+      case 'walking': return 'foot';
       case 'cycling': return 'cycling';
-      default: return 'walking';
+      case 'bicycling': return 'cycling';
+      default: return 'foot';
     }
   }
 

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MapPin, Clock, Car, Train, Bike, Plus, Trash2, Key } from "lucide-react";
+import { MapPin, Clock, Car, Train, Bike, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -15,11 +15,9 @@ interface TravelDestination {
 
 interface TravelCalculatorProps {
   onDestinationsChange: (destinations: TravelDestination[]) => void;
-  onApiKeyChange: (apiKey: string) => void;
-  apiKey: string;
 }
 
-const TravelCalculator = ({ onDestinationsChange, onApiKeyChange, apiKey }: TravelCalculatorProps) => {
+const TravelCalculator = ({ onDestinationsChange }: TravelCalculatorProps) => {
   const [destinations, setDestinations] = useState<TravelDestination[]>([]);
   const [newDestination, setNewDestination] = useState({
     name: "",
@@ -80,34 +78,6 @@ const TravelCalculator = ({ onDestinationsChange, onApiKeyChange, apiKey }: Trav
         </p>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* API Key Input */}
-        <div className="space-y-3 p-4 bg-accent/10 rounded-lg border border-accent/20">
-          <div className="flex items-center gap-2">
-            <Key className="h-4 w-4 text-accent" />
-            <h4 className="font-medium text-sm">Mapbox API Configuration</h4>
-          </div>
-          <div className="space-y-2">
-            <Input
-              type="password"
-              placeholder="Enter your Mapbox public token"
-              value={apiKey}
-              onChange={(e) => onApiKeyChange(e.target.value)}
-              className="search-input"
-            />
-            <p className="text-xs text-muted-foreground">
-              Get your free public token at{" "}
-              <a 
-                href="https://mapbox.com" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-primary hover:underline"
-              >
-                mapbox.com
-              </a>
-              {" "}→ Account → Access tokens
-            </p>
-          </div>
-        </div>
 
         {/* Add New Destination */}
         <div className="space-y-3 p-4 bg-secondary/30 rounded-lg">

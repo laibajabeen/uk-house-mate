@@ -102,9 +102,6 @@ const Index = () => {
   const [searchFilters, setSearchFilters] = useState<SearchFilters | null>(null);
   const [travelDestinations, setTravelDestinations] = useState<TravelDestination[]>([]);
   const [properties, setProperties] = useState<Property[]>(mockProperties);
-  const [mapboxApiKey, setMapboxApiKey] = useState(() => 
-    localStorage.getItem('mapbox-api-key') || ''
-  );
   const [isCalculating, setIsCalculating] = useState(false);
   const { toast } = useToast();
 
@@ -130,14 +127,10 @@ const Index = () => {
     });
   };
 
-  const handleApiKeyChange = (apiKey: string) => {
-    setMapboxApiKey(apiKey);
-    localStorage.setItem('mapbox-api-key', apiKey);
-  };
 
   const calculateTravelTimes = async (destinations: TravelDestination[]) => {
-    if (!mapboxApiKey || destinations.length === 0) {
-      // Reset travel times if no API key or destinations
+    if (destinations.length === 0) {
+      // Reset travel times if no destinations
       setProperties(prevProperties => 
         prevProperties.map(property => ({
           ...property,
@@ -148,7 +141,7 @@ const Index = () => {
     }
 
     setIsCalculating(true);
-    const travelService = new TravelTimeService(mapboxApiKey);
+    const travelService = new TravelTimeService();
 
     try {
       const updatedProperties = await Promise.all(
@@ -188,7 +181,7 @@ const Index = () => {
       console.error('Travel time calculation failed:', error);
       toast({
         title: "Calculation Failed",
-        description: "Please check your API key and try again",
+        description: "Unable to calculate travel times. Please try again.",
         variant: "destructive"
       });
     } finally {
@@ -196,10 +189,10 @@ const Index = () => {
     }
   };
 
-  // Calculate travel times when destinations or API key changes
+  // Calculate travel times when destinations change
   useEffect(() => {
     calculateTravelTimes(travelDestinations);
-  }, [travelDestinations, mapboxApiKey]);
+  }, [travelDestinations]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-secondary/20">
@@ -243,8 +236,6 @@ const Index = () => {
           <div className="lg:col-span-1">
             <TravelCalculator 
               onDestinationsChange={setTravelDestinations}
-              onApiKeyChange={handleApiKeyChange}
-              apiKey={mapboxApiKey}
             />
             {isCalculating && (
               <div className="mt-4 p-4 bg-primary/10 rounded-lg text-center">
