@@ -13,9 +13,17 @@ interface Property {
   bedrooms?: number;
   bathrooms?: number;
   image: string;
+  latitude: number;
+  longitude: number;
   distance?: string;
   travelTime?: string;
   available: boolean;
+  calculatedTravelTimes?: Array<{
+    destinationName: string;
+    duration: string;
+    distance: string;
+    mode: string;
+  }>;
 }
 
 interface PropertyCardProps {
@@ -95,8 +103,36 @@ const PropertyCard = ({ property, onContact, onViewDetails }: PropertyCardProps)
             )}
           </div>
 
-          {/* Travel Info */}
-          {property.distance && property.travelTime && (
+          {/* Calculated Travel Times */}
+          {property.calculatedTravelTimes && property.calculatedTravelTimes.length > 0 && (
+            <div className="p-3 bg-secondary/30 rounded-lg">
+              <h4 className="text-sm font-medium text-foreground mb-2 flex items-center gap-1">
+                <Clock className="h-4 w-4 text-primary" />
+                Travel Times
+              </h4>
+              <div className="space-y-1">
+                {property.calculatedTravelTimes.slice(0, 3).map((travel, index) => (
+                  <div key={index} className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground truncate flex-1">
+                      {travel.destinationName}
+                    </span>
+                    <span className="text-foreground font-medium ml-2">
+                      {travel.duration}
+                    </span>
+                  </div>
+                ))}
+                {property.calculatedTravelTimes.length > 3 && (
+                  <p className="text-xs text-muted-foreground">
+                    +{property.calculatedTravelTimes.length - 3} more
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Fallback Travel Info */}
+          {(!property.calculatedTravelTimes || property.calculatedTravelTimes.length === 0) && 
+           property.distance && property.travelTime && (
             <div className="flex items-center gap-2 p-2 bg-secondary/50 rounded-lg">
               <Clock className="h-4 w-4 text-primary" />
               <span className="text-sm text-foreground">

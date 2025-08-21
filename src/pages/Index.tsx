@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { MapPin, Home, Clock, Zap } from "lucide-react";
 import PropertySearch from "@/components/PropertySearch";
 import PropertyCard from "@/components/PropertyCard";
@@ -7,6 +7,7 @@ import TravelCalculator from "@/components/TravelCalculator";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
+import { TravelTimeService, formatTravelTime, formatDistance } from "@/services/travelTimeService";
 import heroImage from "@/assets/hero-property.jpg";
 
 interface SearchFilters {
@@ -31,6 +32,12 @@ interface Property {
   distance?: string;
   travelTime?: string;
   available: boolean;
+  calculatedTravelTimes?: Array<{
+    destinationName: string;
+    duration: string;
+    distance: string;
+    mode: string;
+  }>;
 }
 
 interface TravelDestination {
@@ -94,7 +101,11 @@ const mockProperties: Property[] = [
 const Index = () => {
   const [searchFilters, setSearchFilters] = useState<SearchFilters | null>(null);
   const [travelDestinations, setTravelDestinations] = useState<TravelDestination[]>([]);
-  const [properties] = useState<Property[]>(mockProperties);
+  const [properties, setProperties] = useState<Property[]>(mockProperties);
+  const [mapboxApiKey, setMapboxApiKey] = useState(() => 
+    localStorage.getItem('mapbox-api-key') || ''
+  );
+  const [isCalculating, setIsCalculating] = useState(false);
   const { toast } = useToast();
 
   const handleSearch = (filters: SearchFilters) => {
@@ -118,6 +129,77 @@ const Index = () => {
       description: `Opening details for "${property.title}"`,
     });
   };
+
+  const handleApiKeyChange = (apiKey: string) => {
+    setMapboxApiKey(apiKey);
+    localStorage.setItem('mapbox-api-key', apiKey);
+  };
+
+  const calculateTravelTimes = async (destinations: TravelDestination[]) => {
+    if (!mapboxApiKey || destinations.length === 0) {
+      // Reset travel times if no API key or destinations
+      setProperties(prevProperties => 
+        prevProperties.map(property => ({
+          ...property,
+          calculatedTravelTimes: []
+        }))
+      );
+      return;
+    }
+
+    setIsCalculating(true);
+    const travelService = new TravelTimeService(mapboxApiKey);
+
+    try {
+      const updatedProperties = await Promise.all(
+        properties.map(async (property) => {
+          const travelTimes = await travelService.calculateMultipleDestinations(
+            [property.longitude, property.latitude],
+            destinations.map(dest => ({
+              address: dest.address,
+              mode: dest.travelMode
+            }))
+          );
+
+          const calculatedTravelTimes = destinations.map((dest, index) => {
+            const result = travelTimes[index];
+            return {
+              destinationName: dest.name,
+              duration: result ? formatTravelTime(result.duration) : 'N/A',
+              distance: result ? formatDistance(result.distance) : 'N/A',
+              mode: dest.travelMode
+            };
+          }).filter(time => time.duration !== 'N/A');
+
+          return {
+            ...property,
+            calculatedTravelTimes
+          };
+        })
+      );
+
+      setProperties(updatedProperties);
+      
+      toast({
+        title: "Travel Times Updated",
+        description: `Calculated travel times for ${destinations.length} destination(s)`,
+      });
+    } catch (error) {
+      console.error('Travel time calculation failed:', error);
+      toast({
+        title: "Calculation Failed",
+        description: "Please check your API key and try again",
+        variant: "destructive"
+      });
+    } finally {
+      setIsCalculating(false);
+    }
+  };
+
+  // Calculate travel times when destinations or API key changes
+  useEffect(() => {
+    calculateTravelTimes(travelDestinations);
+  }, [travelDestinations, mapboxApiKey]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-secondary/20">
@@ -159,7 +241,17 @@ const Index = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Travel Calculator Sidebar */}
           <div className="lg:col-span-1">
-            <TravelCalculator onDestinationsChange={setTravelDestinations} />
+            <TravelCalculator 
+              onDestinationsChange={setTravelDestinations}
+              onApiKeyChange={handleApiKeyChange}
+              apiKey={mapboxApiKey}
+            />
+            {isCalculating && (
+              <div className="mt-4 p-4 bg-primary/10 rounded-lg text-center">
+                <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full mx-auto mb-2"></div>
+                <p className="text-sm text-primary">Calculating travel times...</p>
+              </div>
+            )}
           </div>
 
           {/* Properties and Map */}
