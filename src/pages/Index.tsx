@@ -149,6 +149,7 @@ const Index = () => {
         // Start async calculation and update state when done
         Promise.all(
           currentProperties.map(async (property) => {
+            console.log(`Calculating travel time from property ${property.title} to destinations:`, destinations);
             const travelTimes = await travelService.calculateMultipleDestinations(
               [property.longitude, property.latitude],
               destinations.map(dest => ({
@@ -156,9 +157,11 @@ const Index = () => {
                 mode: dest.travelMode
               }))
             );
+            console.log(`Travel times for ${property.title}:`, travelTimes);
 
             const calculatedTravelTimes = destinations.map((dest, index) => {
               const result = travelTimes[index];
+              console.log(`Destination ${dest.name} result:`, result);
               return {
                 destinationName: dest.name,
                 duration: result ? formatTravelTime(result.duration) : 'N/A',
@@ -167,6 +170,7 @@ const Index = () => {
               };
             }).filter(time => time.duration !== 'N/A');
 
+            console.log(`Final calculated travel times for ${property.title}:`, calculatedTravelTimes);
             return {
               ...property,
               calculatedTravelTimes
