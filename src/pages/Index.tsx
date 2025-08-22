@@ -144,38 +144,53 @@ const Index = () => {
     const travelService = new TravelTimeService();
 
     try {
-      const updatedProperties = await Promise.all(
-        properties.map(async (property) => {
-          const travelTimes = await travelService.calculateMultipleDestinations(
-            [property.longitude, property.latitude],
-            destinations.map(dest => ({
-              address: dest.address,
-              mode: dest.travelMode
-            }))
-          );
+      // Get current properties and calculate travel times
+      setProperties(currentProperties => {
+        // Start async calculation and update state when done
+        Promise.all(
+          currentProperties.map(async (property) => {
+            const travelTimes = await travelService.calculateMultipleDestinations(
+              [property.longitude, property.latitude],
+              destinations.map(dest => ({
+                address: dest.address,
+                mode: dest.travelMode
+              }))
+            );
 
-          const calculatedTravelTimes = destinations.map((dest, index) => {
-            const result = travelTimes[index];
+            const calculatedTravelTimes = destinations.map((dest, index) => {
+              const result = travelTimes[index];
+              return {
+                destinationName: dest.name,
+                duration: result ? formatTravelTime(result.duration) : 'N/A',
+                distance: result ? formatDistance(result.distance) : 'N/A',
+                mode: dest.travelMode
+              };
+            }).filter(time => time.duration !== 'N/A');
+
             return {
-              destinationName: dest.name,
-              duration: result ? formatTravelTime(result.duration) : 'N/A',
-              distance: result ? formatDistance(result.distance) : 'N/A',
-              mode: dest.travelMode
+              ...property,
+              calculatedTravelTimes
             };
-          }).filter(time => time.duration !== 'N/A');
+          })
+        ).then(updatedProperties => {
+          setProperties(updatedProperties);
+          toast({
+            title: "Travel Times Updated",
+            description: `Calculated travel times for ${destinations.length} destination(s)`,
+          });
+        }).catch(error => {
+          console.error('Travel time calculation failed:', error);
+          toast({
+            title: "Calculation Failed",
+            description: "Unable to calculate travel times. Please try again.",
+            variant: "destructive"
+          });
+        }).finally(() => {
+          setIsCalculating(false);
+        });
 
-          return {
-            ...property,
-            calculatedTravelTimes
-          };
-        })
-      );
-
-      setProperties(updatedProperties);
-      
-      toast({
-        title: "Travel Times Updated",
-        description: `Calculated travel times for ${destinations.length} destination(s)`,
+        // Return current properties immediately (calculation happens async)
+        return currentProperties;
       });
     } catch (error) {
       console.error('Travel time calculation failed:', error);
@@ -184,14 +199,15 @@ const Index = () => {
         description: "Unable to calculate travel times. Please try again.",
         variant: "destructive"
       });
-    } finally {
       setIsCalculating(false);
     }
   };
 
   // Calculate travel times when destinations change
   useEffect(() => {
-    calculateTravelTimes(travelDestinations);
+    if (travelDestinations.length > 0) {
+      calculateTravelTimes(travelDestinations);
+    }
   }, [travelDestinations]);
 
   return (
