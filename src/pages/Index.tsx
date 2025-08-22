@@ -7,7 +7,11 @@ import TravelCalculator from "@/components/TravelCalculator";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { TravelTimeService, formatTravelTime, formatDistance } from "@/services/travelTimeService";
+import {
+  TravelTimeService,
+  formatTravelTime,
+  formatDistance,
+} from "@/services/travelTimeService";
 import heroImage from "@/assets/hero-property.jpg";
 
 interface SearchFilters {
@@ -63,7 +67,7 @@ const mockProperties: Property[] = [
     longitude: -0.1426,
     distance: "2.3 miles",
     travelTime: "25 min",
-    available: true
+    available: true,
   },
   {
     id: "2",
@@ -75,10 +79,10 @@ const mockProperties: Property[] = [
     bathrooms: 1,
     image: heroImage,
     latitude: 51.5301,
-    longitude: -0.1240,
+    longitude: -0.124,
     distance: "1.8 miles",
     travelTime: "20 min",
-    available: true
+    available: true,
   },
   {
     id: "3",
@@ -94,22 +98,56 @@ const mockProperties: Property[] = [
     longitude: -0.1022,
     distance: "3.1 miles",
     travelTime: "35 min",
-    available: false
-  }
+    available: false,
+  },
 ];
 
 const Index = () => {
-  const [searchFilters, setSearchFilters] = useState<SearchFilters | null>(null);
-  const [travelDestinations, setTravelDestinations] = useState<TravelDestination[]>([]);
+  const [searchFilters, setSearchFilters] = useState<SearchFilters | null>(
+    null
+  );
+  const [travelDestinations, setTravelDestinations] = useState<
+    TravelDestination[]
+  >([]);
   const [properties, setProperties] = useState<Property[]>(mockProperties);
   const [isCalculating, setIsCalculating] = useState(false);
   const { toast } = useToast();
 
   const handleSearch = (filters: SearchFilters) => {
     setSearchFilters(filters);
+
+    // Apply filters to the full mockProperties list
+    const filteredProperties = mockProperties.filter((property) => {
+      const matchesLocation = filters.location
+        ? property.location
+            .toLowerCase()
+            .includes(filters.location.toLowerCase())
+        : true;
+
+      const matchesMinBudget = filters.minBudget
+        ? property.price >= parseInt(filters.minBudget)
+        : true;
+
+      const matchesMaxBudget = filters.maxBudget
+        ? property.price <= parseInt(filters.maxBudget)
+        : true;
+
+      const matchesType = filters.propertyType
+        ? property.propertyType === filters.propertyType
+        : true;
+
+      return (
+        matchesLocation && matchesMinBudget && matchesMaxBudget && matchesType
+      );
+    });
+
+    setProperties(filteredProperties);
+
     toast({
       title: "Search Updated",
-      description: `Searching for ${filters.propertyType || 'properties'} in ${filters.location || 'all areas'}`,
+      description: `Searching for ${filters.propertyType || "properties"} in ${
+        filters.location || "all areas"
+      }`,
     });
   };
 
@@ -127,14 +165,13 @@ const Index = () => {
     });
   };
 
-
   const calculateTravelTimes = async (destinations: TravelDestination[]) => {
     if (destinations.length === 0) {
       // Clear all calculated travel times if no destinations
-      setProperties(prevProperties => 
-        prevProperties.map(property => ({
+      setProperties((prevProperties) =>
+        prevProperties.map((property) => ({
           ...property,
-          calculatedTravelTimes: []
+          calculatedTravelTimes: [],
         }))
       );
       return;
@@ -142,12 +179,15 @@ const Index = () => {
 
     setIsCalculating(true);
     const travelService = new TravelTimeService();
-    console.log('Starting travel time calculation for destinations:', destinations);
+    console.log(
+      "Starting travel time calculation for destinations:",
+      destinations
+    );
 
     try {
       // Get current properties - using the state directly
       const currentProperties = properties;
-      console.log('Current properties count:', currentProperties.length);
+      console.log("Current properties count:", currentProperties.length);
 
       if (currentProperties.length === 0) {
         setIsCalculating(false);
@@ -157,29 +197,34 @@ const Index = () => {
       // Calculate travel times for all properties
       const updatedProperties = await Promise.all(
         currentProperties.map(async (property) => {
-          console.log(`Calculating travel time from property "${property.title}" at [${property.longitude}, ${property.latitude}]`);
-          
+          console.log(
+            `Calculating travel time from property "${property.title}" at [${property.longitude}, ${property.latitude}]`
+          );
+
           try {
-            const travelTimes = await travelService.calculateMultipleDestinations(
-              [property.longitude, property.latitude],
-              destinations.map(dest => ({
-                address: dest.address,
-                mode: dest.travelMode
-              }))
-            );
+            const travelTimes =
+              await travelService.calculateMultipleDestinations(
+                [property.longitude, property.latitude],
+                destinations.map((dest) => ({
+                  address: dest.address,
+                  mode: dest.travelMode,
+                }))
+              );
             console.log(`Travel times for ${property.title}:`, travelTimes);
 
             const calculatedTravelTimes = destinations.map((dest, index) => {
               const result = travelTimes[index];
               console.log(`Destination "${dest.name}" result:`, result);
-              
+
               if (!result) {
-                console.warn(`No travel time result for destination: ${dest.name}`);
+                console.warn(
+                  `No travel time result for destination: ${dest.name}`
+                );
                 return {
                   destinationName: dest.name,
-                  duration: 'N/A',
-                  distance: 'N/A',
-                  mode: dest.travelMode
+                  duration: "N/A",
+                  distance: "N/A",
+                  mode: dest.travelMode,
                 };
               }
 
@@ -187,45 +232,53 @@ const Index = () => {
                 destinationName: dest.name,
                 duration: formatTravelTime(result.duration),
                 distance: formatDistance(result.distance),
-                mode: dest.travelMode
+                mode: dest.travelMode,
               };
             });
 
-            console.log(`Final calculated travel times for ${property.title}:`, calculatedTravelTimes);
-            
+            console.log(
+              `Final calculated travel times for ${property.title}:`,
+              calculatedTravelTimes
+            );
+
             return {
               ...property,
-              calculatedTravelTimes
+              calculatedTravelTimes,
             };
           } catch (error) {
-            console.error(`Error calculating travel times for property ${property.title}:`, error);
+            console.error(
+              `Error calculating travel times for property ${property.title}:`,
+              error
+            );
             return {
               ...property,
-              calculatedTravelTimes: destinations.map(dest => ({
+              calculatedTravelTimes: destinations.map((dest) => ({
                 destinationName: dest.name,
-                duration: 'Error',
-                distance: 'Error',
-                mode: dest.travelMode
-              }))
+                duration: "Error",
+                distance: "Error",
+                mode: dest.travelMode,
+              })),
             };
           }
         })
       );
 
-      console.log('All travel times calculated, updating state:', updatedProperties);
+      console.log(
+        "All travel times calculated, updating state:",
+        updatedProperties
+      );
       setProperties(updatedProperties);
-      
+
       toast({
         title: "Travel Times Updated",
         description: `Calculated travel times for ${destinations.length} destination(s)`,
       });
-      
     } catch (error) {
-      console.error('Error in calculateTravelTimes:', error);
+      console.error("Error in calculateTravelTimes:", error);
       toast({
         title: "Calculation Failed",
         description: "Unable to calculate travel times. Please try again.",
-        variant: "destructive"
+        variant: "destructive",
       });
     } finally {
       setIsCalculating(false);
@@ -249,8 +302,9 @@ const Index = () => {
             Find Your Perfect Home in the UK
           </h1>
           <p className="text-xl md:text-2xl mb-8 text-primary-foreground/90 max-w-3xl mx-auto">
-            Discover properties by budget and location, see travel times to your favorite places, 
-            and let our agents handle the contact process for you.
+            Discover properties by budget and location, see travel times to your
+            favorite places, and let our agents handle the contact process for
+            you.
           </p>
           <div className="flex flex-wrap justify-center gap-6 mb-12">
             <div className="flex items-center gap-2 bg-white/10 rounded-lg px-4 py-2">
@@ -279,13 +333,13 @@ const Index = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Travel Calculator Sidebar */}
           <div className="lg:col-span-1">
-            <TravelCalculator 
-              onDestinationsChange={setTravelDestinations}
-            />
+            <TravelCalculator onDestinationsChange={setTravelDestinations} />
             {isCalculating && (
               <div className="mt-4 p-4 bg-primary/10 rounded-lg text-center">
                 <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full mx-auto mb-2"></div>
-                <p className="text-sm text-primary">Calculating travel times...</p>
+                <p className="text-sm text-primary">
+                  Calculating travel times...
+                </p>
               </div>
             )}
           </div>
@@ -345,7 +399,8 @@ const Index = () => {
               Why Choose RealEstate Buddy?
             </h2>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              We make finding your perfect home easier with smart features designed for busy people.
+              We make finding your perfect home easier with smart features
+              designed for busy people.
             </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -353,18 +408,24 @@ const Index = () => {
               <div className="bg-primary/10 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Home className="h-8 w-8 text-primary" />
               </div>
-              <h3 className="text-xl font-semibold mb-3">Smart Budget Search</h3>
+              <h3 className="text-xl font-semibold mb-3">
+                Smart Budget Search
+              </h3>
               <p className="text-muted-foreground">
-                Find properties that match your exact budget and location preferences across the UK.
+                Find properties that match your exact budget and location
+                preferences across the UK.
               </p>
             </div>
             <div className="text-center p-8 bg-card rounded-xl shadow-card">
               <div className="bg-primary/10 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Clock className="h-8 w-8 text-primary" />
               </div>
-              <h3 className="text-xl font-semibold mb-3">Travel Time Insights</h3>
+              <h3 className="text-xl font-semibold mb-3">
+                Travel Time Insights
+              </h3>
               <p className="text-muted-foreground">
-                See exactly how long it takes to get to work, gym, or anywhere else that matters to you.
+                See exactly how long it takes to get to work, gym, or anywhere
+                else that matters to you.
               </p>
             </div>
             <div className="text-center p-8 bg-card rounded-xl shadow-card">
@@ -373,7 +434,8 @@ const Index = () => {
               </div>
               <h3 className="text-xl font-semibold mb-3">Auto Contact Forms</h3>
               <p className="text-muted-foreground">
-                Our agents handle all the paperwork and contact forms, so you don't have to.
+                Our agents handle all the paperwork and contact forms, so you
+                don't have to.
               </p>
             </div>
           </div>
